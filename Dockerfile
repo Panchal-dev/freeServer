@@ -20,5 +20,5 @@ COPY . .
 
 EXPOSE 80 22
 
-# Use Python interpreter to run server.py
-CMD ["python", "/app/server.py"]
+# Start SSH server and uvicorn
+CMD ["/bin/sh", "-c", "echo 'Starting SSH server...' && /usr/sbin/sshd -D -e & echo 'Starting uvicorn...' && uvicorn server:app --host 0.0.0.0 --port $PORT"]
