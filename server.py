@@ -40,7 +40,7 @@ def start_sshd():
         os.system(f"echo '{SSH_USER}:{SSH_PASS}' | chpasswd")
         # Start sshd
         os.system("/usr/sbin/sshd -D -e &")
-        logger.info("Started SSH server")
+        logger.info("Started SSH server on localhost:22")
     except Exception as e:
         logger.error(f"Failed to start SSH server: {str(e)}")
 
@@ -74,11 +74,12 @@ async def handle_websocket(websocket, path):
         
         logger.info(f"Authenticated user: {username}")
         
-        # Handle WebSocket upgrade
-        if "Upgrade" in headers and headers["Upgrade"].lower() == "websocket":
-            logger.debug("WebSocket upgrade request received")
+        # Handle WebSocket upgrade (matches DarkTunnel request)
+        if "Upgrade" in headers and headers["Upgrade"].lower() == "websocket" and \
+           "Host" in headers and "config.rcs.mnc857.mcc405.pub.3gppnetwork.org" in headers["Host"]:
+            logger.debug("WebSocket upgrade request from DarkTunnel received")
         
-        # SSH tunneling
+        # SSH tunneling to localhost:22
         async def forward_ssh():
             sock = None
             transport = None
