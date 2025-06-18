@@ -26,7 +26,7 @@ SOCKET_TIMEOUT = 10
 SSH_USER = os.environ.get("SSH_USER", "dev")
 SSH_PASS = os.environ.get("SSH_PASS", "123")
 
-# Flask app for Railway
+# Flask app for Railway (served by Gunicorn)
 app = Flask(__name__)
 
 @app.route('/')
@@ -139,32 +139,40 @@ async def handle_websocket(websocket, path):
         logger.error(f"WebSocket error: {str(e)}")
         await websocket.close(1011, str(e))
 
-# Start WebSocket server
+# Start WebSocket server on a different port or handle dynamically
 def start_websocket_server():
+    # Use a different port or integrate with Gunicorn (e.g., via ASGI)
     async def run_server():
-        server = await websockets.serve(
-            handle_websocket,
-            HOST,
-            PORT,
-            max_size=TCP_BUFFER_SIZE,
-            ping_interval=20,
-            ping_timeout=20
-        )
-        logger.info(f"WebSocket server started on {HOST}:{PORT}")
-        await server.wait_closed()
+        # Attempt to use PORT, but handle conflict with Gunicorn
+        try:
+            server = await websockets.serve(
+                handle_websocket,
+                HOST,
+                PORT,
+                max_size=TCP_BUFFER_SIZE,
+                ping_interval=20,
+                ping_timeout=20
+            )
+            logger.info(f"WebSocket server started on {HOST}:{PORT}")
+            await server.wait_closed()
+        except OSError as e:
+            if e.errno == 98:  # Address already in use
+                logger.error(f"Port {PORT} already in use by Gunicorn. WebSocket server failed to start.")
+            else:
+                logger.error(f"WebSocket server error: {str(e)}")
     
     asyncio.run(run_server())
 
-# Run Flask, WebSocket, and SSH
+# Main function (run by Gunicorn, not directly)
 def main():
     # Start SSH server
     start_sshd()
-    # Start WebSocket server
+    # Start WebSocket server (will fail if port conflicts, logged)
     ws_thread = Thread(target=start_websocket_server, daemon=True)
     ws_thread.start()
-    # Start Flask
-    logger.info(f"Starting Flask app on {HOST}:{PORT}")
-    app.run(host=HOST, port=PORT, threaded=True)
+    # Flask app is served by Gunicorn, so don't run app.run here
+    logger.info(f"Flask app ready to be served by Gunicorn on {HOST}:{PORT}")
 
 if __name__ == "__main__":
+    # For local testing only
     main()
