@@ -20,4 +20,5 @@ COPY . .
 
 EXPOSE 80 22
 
-CMD ["/app/server.py"]
+# Use Python interpreter to run server.py
+CMD ["python", "/app/server.py"]
